@@ -1,0 +1,56 @@
+﻿@model Tepih
+@{
+    ViewData["Title"] = "Scan QR Code";
+}
+
+<h2>Scan QR Code</h2>
+
+<!-- QR code scanner UI -->
+<div id="qr-reader" style="width:500px;"></div>
+<div id="result"></div>
+<div id="tepihInfo">
+    @if (Model != null)
+    {
+        <ul>
+            <li id="idd">@Model.Id</li>
+            <li id="name">@Model.Name</li>
+            <li id="desc">@Model.Description</li>
+            <li id="qty">@Model.Quantity</li>
+
+        </ul>
+    }
+</div>
+<div>
+    @if (Model != null)
+    {
+        @if (Model.Quantity > 0)
+        {
+            <a class="btn btn-secondary" href="/InventoryItem/Update/@Model.Id">Remove 1</a>
+        }
+    }
+</div>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+
+    // Define callback for successful QR code scan
+    function onScanSuccess(qrCodeMessage) {
+        // Display the QR code message
+        document.getElementById('result').innerHTML = `<strong>QR Code Result: </strong> ${qrCodeMessage}`;
+
+        // Optional: Handle the result (e.g., send to backend or redirect)
+         window.location.href = `/InventoryItem/ProcessQRCode?data=${qrCodeMessage}`;
+
+    }
+
+    // Define callback for scan errors
+    function onScanError(errorMessage) {
+        console.warn(`QR Code scan error: ${errorMessage}`);
+    }
+
+    // Initialize the Html5QrcodeScanner
+    var html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+    html5QrcodeScanner.render(onScanSuccess, onScanError);
+</script>
+
+
+

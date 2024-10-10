@@ -1,0 +1,20 @@
+﻿@model Tepih
+
+<h2>Create Inventory Item</h2>
+
+<form asp-action="Create" method="post">
+    <input type="hidden" class="form-control" asp-for="DateTime" />
+    <div class="form-group">
+        <label for="Name">Name</label>
+        <input type="text" class="form-control" asp-for="Name" />
+    </div>
+    <div class="form-group">
+        <label for="Description">Description</label>
+        <input type="text" class="form-control" asp-for="Description" />
+    </div>
+    <div class="form-group">
+        <label for="Quantity">Quantity</label>
+        <input type="number" class="form-control" asp-for="Quantity" />
+    </div>
+    <button type="submit" class="btn btn-primary">Create</button>
+</form>
