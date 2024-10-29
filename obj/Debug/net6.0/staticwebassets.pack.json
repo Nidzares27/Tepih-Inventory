@@ -13,18 +13,6 @@
       "PackagePath": "staticwebassets\\favicon.ico"
     },
     {
-      "Id": "C:\\Users\\PC\\source\\repos\\Inventar\\Inventar\\wwwroot\\images\\42b781e1-73d8-4e5f-8bcc-eaa174ef8527.png",
-      "PackagePath": "staticwebassets\\images\\42b781e1-73d8-4e5f-8bcc-eaa174ef8527.png"
-    },
-    {
-      "Id": "C:\\Users\\PC\\source\\repos\\Inventar\\Inventar\\wwwroot\\images\\b21a22f3-3e71-4071-9e56-d3d144cfb5a0.png",
-      "PackagePath": "staticwebassets\\images\\b21a22f3-3e71-4071-9e56-d3d144cfb5a0.png"
-    },
-    {
-      "Id": "C:\\Users\\PC\\source\\repos\\Inventar\\Inventar\\wwwroot\\images\\f6cde29f-713f-43f7-a52c-847fbcc37115.png",
-      "PackagePath": "staticwebassets\\images\\f6cde29f-713f-43f7-a52c-847fbcc37115.png"
-    },
-    {
       "Id": "C:\\Users\\PC\\source\\repos\\Inventar\\Inventar\\wwwroot\\js\\site.js",
       "PackagePath": "staticwebassets\\js\\site.js"
     },

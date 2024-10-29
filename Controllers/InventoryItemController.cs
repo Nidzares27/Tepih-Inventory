@@ -12,19 +12,24 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Linq;
 using Inventar.ViewModels;
+using CloudinaryDotNet.Actions;
+using CloudinaryDotNet;
+using Microsoft.AspNetCore.Http;
+using Inventar.Utils;
 
 namespace Inventar.Controllers
 {
     public class InventoryItemController : Controller
     {
-        //private static List<Tepih> inventoryItems = new List<Tepih>();
         private readonly ITepihRepository _tepihRepository;
         private readonly ApplicationDbContext _context;
+        private readonly IPhotoService _photoService;
 
-        public InventoryItemController(ITepihRepository tepihRepository, ApplicationDbContext context)
+        public InventoryItemController(ITepihRepository tepihRepository, ApplicationDbContext context, IPhotoService photoService)
         {
             this._tepihRepository = tepihRepository;
             this._context = context;
+            this._photoService = photoService;
         }
 
         public async Task<IActionResult> Index()
@@ -33,7 +38,6 @@ namespace Inventar.Controllers
             return View(tepisi);
         }
 
-        // Action to create a new Inventory item
         [HttpGet]
         public IActionResult Create()
         {
@@ -41,61 +45,86 @@ namespace Inventar.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create(Tepih model)
+        public async Task< IActionResult> Create(Tepih model)
         {
             if (ModelState.IsValid)
             {
-
-                //model.Id = inventoryItems.Count > 0 ? inventoryItems.Max(i => i.Id) + 1 : 1;
                 var time = DateTime.Now.ToString();
-                // Generate QR Code for the item
-                //var qrCodeImageUrl = GenerateQRCode($"{model.Id}-{model.Name}");
-                var qrCodeImageUrl = GenerateQRCode($"{time}");
-                //var qrCodeImageUrl = GenerateQRCode($"{DateTime.Now}");
 
-                model.QRCodeUrl = qrCodeImageUrl;
+                // Generate QR Code for the item
+                var qrCodeImageUrl = await GenerateQRCode($"{time}");
+                var url = "";
+
+                if (qrCodeImageUrl is OkObjectResult okResult)
+                {
+                    // Retrieve the actual object from the OkObjectResult
+                    var value = okResult.Value as dynamic;
+
+                    // Extract the URL from the object
+                    url = value?.url;
+                }
+
+                model.QRCodeUrl = url ;
                 model.DateTime = time;
-                //inventoryItems.Add(model);
                 _tepihRepository.Add(model);
-                return RedirectToAction("Index");
+                return RedirectToAction("GenerateCloudinaryImagePdf", "Pdf", model);
+
             }
             return View(model);
         }
 
-        // QR Code Generation Method
-        private string GenerateQRCode(string content)
+        public async Task<IActionResult> GenerateQRCode(string data)
         {
-            // Generate QR Code using ZXing.Net
-            var writer = new BarcodeWriterPixelData
+            // Step 1: Generate the QR code using ZXing.Net
+            var qrCodeWriter = new BarcodeWriterPixelData
             {
                 Format = BarcodeFormat.QR_CODE,
                 Options = new QrCodeEncodingOptions
                 {
-                    Height = 200,
-                    Width = 200,
-                    Margin = 1
+                    Height = 250,    // Set height
+                    Width = 250,     // Set width
+                    Margin = 1       // Set margin
                 }
             };
 
-            var pixelData = writer.Write(content);
-            using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height))
+            // Generate QR code pixel data
+            var pixelData = qrCodeWriter.Write(data);
+
+            // Step 2: Create Bitmap from pixel data
+            using (var bitmap = new Bitmap(pixelData.Width, pixelData.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
             {
-                for (int y = 0; y < pixelData.Height; y++)
+                // Copy the pixel data to the bitmap
+                var bitmapData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), System.Drawing.Imaging.ImageLockMode.WriteOnly, bitmap.PixelFormat);
+                try
                 {
-                    for (int x = 0; x < pixelData.Width; x++)
-                    {
-                        Color pixelColor = pixelData.Pixels[(y * pixelData.Width + x) * 4] == 0 ? Color.Black : Color.White;
-                        bitmap.SetPixel(x, y, pixelColor);
-                    }
+                    System.Runtime.InteropServices.Marshal.Copy(pixelData.Pixels, 0, bitmapData.Scan0, pixelData.Pixels.Length);
+                }
+                finally
+                {
+                    bitmap.UnlockBits(bitmapData);
                 }
 
-                // Save bitmap as PNG
-                var fileName = $"{Guid.NewGuid()}.png";
-                var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", fileName);
-                bitmap.Save(filePath);
+                // Step 3: Save the bitmap to a memory stream as PNG
+                using (var stream = new MemoryStream())
+                {
+                    bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png); // Save as PNG
+                    stream.Position = 0; // Reset stream position for upload
 
-                // Return relative path for use in view
-                return $"/images/{fileName}";
+                    // Step 4: Upload to Cloudinary
+                    var newGuid = $"{Guid.NewGuid()}.png";
+
+                    var uploadResult = await _photoService.UploadToCloudinary(newGuid, stream);
+
+                    if (uploadResult.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        // Return the Cloudinary URL of the uploaded QR code
+                        return Ok(new { url = uploadResult.SecureUrl.ToString() });
+                    }
+                    else
+                    {
+                        return StatusCode(500, "QR code upload to Cloudinary failed");
+                    }
+                }
             }
         }
 
@@ -164,6 +193,22 @@ namespace Inventar.Controllers
         {
             Tepih tepih = await _tepihRepository.GetByIdAsync(id);
 
+            if (tepih.QRCodeUrl != null && tepih.QRCodeUrl.Length > 0)
+            {
+                if (!string.IsNullOrEmpty(tepih.QRCodeUrl))
+                {
+                    var publicId = CloudinaryHelper.GetPublicIdFromUrlFromFolder(tepih.QRCodeUrl);
+
+                    try
+                    {
+                        await _photoService.DeletePhotoAsync(publicId);
+                    }
+                    catch (Exception ex)
+                    {
+                        ModelState.AddModelError("", "Could not delete photo");
+                    }
+                }
+            }
             _tepihRepository.Delete(tepih);
             return RedirectToAction("Index");
         }

@@ -12,6 +12,7 @@
     @if (Model != null)
     {
         <ul>
+            <li><img src="@Model.QRCodeUrl" alt="QR Code for @Model.Name" /></li>
             <li id="idd">@Model.Id</li>
             <li id="name">@Model.Name</li>
             <li id="desc">@Model.Description</li>
